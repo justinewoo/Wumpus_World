@@ -18,13 +18,18 @@
 # ======================================================================
 
 from Agent import Agent
+import random
 
 class MyAI ( Agent ):
 
     def __init__ ( self ):
-        # ======================================================================
-        # YOUR CODE BEGINS
-        # ======================================================================
+        self.x = 0
+        self.y = 0
+        self.hasArrow = True
+        self.hasGold = False
+
+        self.safe = [[0]]
+
         
         pass
         # ======================================================================
@@ -35,11 +40,20 @@ class MyAI ( Agent ):
         # ======================================================================
         # YOUR CODE BEGINS
         # ======================================================================
-        
-        return Agent.Action.CLIMB
-        # ======================================================================
-        # YOUR CODE ENDS
-        # ======================================================================
+        if self.x == 1 and self.y == 1:
+            if stench or breeze:
+                return Agent.Action.CLIMB
+
+        return self.__actions [ random.randrange ( len ( self.__actions ) ) ]
+    
+    __actions = [
+        Agent.Action.TURN_LEFT,
+        Agent.Action.TURN_RIGHT,
+        Agent.Action.FORWARD,
+        Agent.Action.CLIMB,
+        Agent.Action.SHOOT,
+        Agent.Action.GRAB
+    ]
     
     # ======================================================================
     # YOUR CODE BEGINS
