@@ -22,44 +22,29 @@ import random
 
 class MyAI ( Agent ):
 
-    def __init__ ( self ):
-        self.x = 0
-        self.y = 0
-        self.hasArrow = True
-        self.hasGold = False
+def __init__ ( self ):
+	self.x = 0
+	self.y = 0
+	self.hasArrow = True
+	self.hasGold = False
 
-        self.safe = [[0]]
+	self.safe = [[(0,0)]]
 
-        
-        pass
-        # ======================================================================
-        # YOUR CODE ENDS
-        # ======================================================================
 
-    def getAction( self, stench, breeze, glitter, bump, scream ):
-        # ======================================================================
-        # YOUR CODE BEGINS
-        # ======================================================================
-        if self.x == 1 and self.y == 1:
-            if stench or breeze:
-                return Agent.Action.CLIMB
+def getAction( self, stench, breeze, glitter, bump, scream ):
 
-        return self.__actions [ random.randrange ( len ( self.__actions ) ) ]
-    
-    __actions = [
-        Agent.Action.TURN_LEFT,
-        Agent.Action.TURN_RIGHT,
-        Agent.Action.FORWARD,
-        Agent.Action.CLIMB,
-        Agent.Action.SHOOT,
-        Agent.Action.GRAB
-    ]
-    
-    # ======================================================================
-    # YOUR CODE BEGINS
-    # ======================================================================
+	if self.x == 1 and self.y == 1:
+		if stench or breeze:
+			return Agent.Action.CLIMB
 
-    
-    # ======================================================================
-    # YOUR CODE ENDS
-    # ======================================================================
+	return self.__actions [ random.randrange ( len ( self.__actions ) ) ]
+
+
+	__actions = [
+	Agent.Action.TURN_LEFT,
+	Agent.Action.TURN_RIGHT,
+	Agent.Action.FORWARD,
+	Agent.Action.CLIMB,
+	Agent.Action.SHOOT,
+	Agent.Action.GRAB
+	]
