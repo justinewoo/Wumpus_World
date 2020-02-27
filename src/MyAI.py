@@ -29,37 +29,27 @@ class MyAI ( Agent ):
 		self.dy = 0
 
 		self.hasGold = False
-		self.moved = True
 
 		self.map = []
-		self.safe = {}
 
+		self.numofmoves = 0
 
 	def getAction( self, stench, breeze, glitter, bump, scream ):
-		if bump:
-			print("BUMP")
-			self.moved = False
-
-		if self.moved:
-			self.addToMap(stench,breeze)
-		
-		self.printStatus()
-
+		self.numofmoves += 1
+		print(self.numofmoves,self.x,self.y)
 
 		if glitter and not self.hasGold:
-			self.grab()
-		if self.x == 0 and self.y == 0 and (stench or breeze):
-			return Agent.Action.CLIMB
+			return self.grab()
+		if self.x == 0 and self.y == 0:
+			if stench or breeze or self.hasGold:
+				print("CLIMB")
+				return Agent.Action.CLIMB
 
+		if bump:
+			self.x -= self.dx
+			self.y -= self.dy
 
-		if not stench and not breeze:
-			print("NO STENCH NO BREEZE")
-			# if not bump:
-			print("FORWARD")
-			self.forward()
-
-		print("NULL")
-		self.grab()
+		return self.forward()
 
 
 	def isForwardSafe(self):
@@ -78,11 +68,13 @@ class MyAI ( Agent ):
 	def grab(self):
 		self.moved = False
 		self.hasGold = True
+		print("GOLD===========================================================")
 		return Agent.Action.GRAB
 
 
 	def shoot(self):
 		self.moved = False
+		print("SHOOT")
 		return Agent.Action.SHOOT
 
 
@@ -90,6 +82,7 @@ class MyAI ( Agent ):
 		self.x += self.dx
 		self.y += self.dy
 		self.moved = True
+		print("FORWARD")
 		return Agent.Action.FORWARD
 
 
@@ -107,6 +100,7 @@ class MyAI ( Agent ):
 			self.dx = 1
 			self.dy = 0
 		self.moved = False
+		print("TURN_LEFT")
 		return Agent.Action.TURN_LEFT
 
 
@@ -124,6 +118,7 @@ class MyAI ( Agent ):
 			self.dx = -1
 			self.dy = 0
 		self.moved = False
+		print("TURN_RIGHT")
 		return Agent.Action.TURN_RIGHT
 
 
