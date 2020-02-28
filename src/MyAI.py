@@ -22,6 +22,7 @@ import random
 
 printStuff = False
 
+
 class MyAI ( Agent ):
 
 	def __init__ ( self ):
@@ -33,13 +34,15 @@ class MyAI ( Agent ):
 
 		self.mapX = -1
 		self.mapY = -1
+		self.maxX = 0 # Maximum x that it got to
+		self.maxY = 0
 
 		self.hasGold = False
 		self.numofMoves = 0
-		self.moveLimit = 50
+		self.moveLimit = 1
 
 		self.map = {}
-		self.moves = [Forward()]
+		self.moves = []
 		self.undo = []
 
 		self.backTrack = False
@@ -47,6 +50,17 @@ class MyAI ( Agent ):
 
 	def getAction( self, stench, breeze, glitter, bump, scream ):
 		self.numofMoves += 1
+
+		if self.x > self.maxX:
+			self.maxX = self.x
+		if self.y > self.maxY:
+			self.maxY = self.y
+
+
+		if len(self.map)*5 > self.moveLimit:
+			self.moveLimit = len(self.map)*5
+
+
 		if bump:
 			if self.direction == 0:
 				self.mapX = self.x
@@ -54,50 +68,36 @@ class MyAI ( Agent ):
 				self.mapY = self.y
 			self.x -= self.dx
 			self.y -= self.dy
-			i = 0
-			while i < 5 and len(self.undo) > 0:
-				i += 1
-				del self.undo[0]
+
+			del self.undo[0:min(5,len(self.undo))]
+
+		self.addToMap(stench, breeze)
+
+
 		if printStuff:
 			self.printStatus()
+
+
 		if glitter:
 			return self.grab()
-		self.addToMap(stench, breeze)
+
 		if self.x == 0 and self.y == 0 and (self.hasGold or breeze or stench or self.numofMoves > self.moveLimit):
 			return Agent.Action.CLIMB
+
 
 		if not self.backTrack and (stench or breeze or bump):
 			self.backTrack = True
 			self.moves = []
 
 		if self.backTrack:
-			self.backTrack = False
 			if not stench and not breeze and not bump:
-				if (self.mapX == -1 or self.x < self.mapX-1) and (self.x+1,self.y) not in self.map:
-					self.setDirection(0)
-				elif self.y > 0 and (self.x,self.y-1) not in self.map:
-					self.setDirection(1)
-				elif self.x > 0 and (self.x-1,self.y) not in self.map:
-					self.setDirection(2)
-				elif (self.mapY == -1 or self.y < self.mapY-1) and (self.x,self.y+1) not in self.map:
-					self.setDirection(3)
-			else:
-				self.backTrack = True
-
+				self.backTrack = not self.checkForUnexplored()
 
 		if (self.backTrack or self.hasGold or self.numofMoves > self.moveLimit) and len(self.undo) > 0:
 			return self.undo.pop(0).action(self)
 
-
 		if not self.backTrack and len(self.moves) == 0:
-			# if (self.mapX == -1 or self.x < self.mapX-1) and (self.x+1,self.y) not in self.map:
-			# 	self.setDirection(0)
-			# elif self.y > 0 and (self.x,self.y-1) not in self.map:
-			# 	self.setDirection(1)
-			# elif self.x > 0 and (self.x-1,self.y) not in self.map:
-			# 	self.setDirection(2)
-			# elif (self.mapY == -1 or self.y < self.mapY-1) and (self.x,self.y+1) not in self.map:
-			# 	self.setDirection(3)
+			# self.checkForUnexplored()
 			self.moves.append(Forward())
 
 		if len(self.moves) > 0:
@@ -105,6 +105,22 @@ class MyAI ( Agent ):
 			move.undo(self)
 			return move.action(self)
 		
+
+	def checkForUnexplored(self):
+		if (self.mapY == -1 or self.y < self.mapY-1) and (self.x,self.y+1) not in self.map:
+			self.setDirection(3)
+			return True
+		elif self.y > 0 and (self.x,self.y-1) not in self.map:
+			self.setDirection(1)
+			return True
+		elif (self.mapX == -1 or self.x < self.mapX-1) and (self.x+1,self.y) not in self.map:
+			self.setDirection(0)
+			return True
+		elif self.x > 0 and (self.x-1,self.y) not in self.map:
+			self.setDirection(2)
+			return True
+		return False
+
 
 	def setDirection(self, direction):
 		if abs(self.direction - direction) == 2:
@@ -115,8 +131,10 @@ class MyAI ( Agent ):
 		elif direction - self.direction == 1 or (self.direction == 3 and direction == 0):
 			self.moves.append(TurnRight())
 
+
 	def addToMap(self, stench, breeze):
 		self.map[(self.x,self.y)] = not stench and not breeze
+
 
 	def grab(self):
 		self.moved = False
@@ -124,6 +142,7 @@ class MyAI ( Agent ):
 		if printStuff:
 			print("GOLD===========================================================")
 		return Agent.Action.GRAB
+
 
 	def printStatus(self):
 		print("BACKTRACK: " + str(self.backTrack))

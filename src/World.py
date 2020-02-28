@@ -57,8 +57,9 @@ class World():
             self.__board = [[self.__Tile() for j in range(self.__rowDimension)] for i in range(self.__colDimension)]
             self.__addFeatures(file)
         else:
-            self.__colDimension = 4
-            self.__rowDimension = 4
+            width = random.randint(4,7)
+            self.__colDimension = width
+            self.__rowDimension = width
             self.__board = [[self.__Tile() for j in range(self.__colDimension)] for i in range(self.__rowDimension)]
             self.__addFeatures()
     
