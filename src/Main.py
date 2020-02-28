@@ -52,7 +52,7 @@ def main ( ):
         # Run on a random world and exit
         world = World()
         score = world.run()
-        print ("Your agent scored: " + str(score))
+        #print ("Your agent scored: " + str(score))
         return score
 
     # Important Variables

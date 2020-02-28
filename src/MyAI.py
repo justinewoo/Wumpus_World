@@ -20,6 +20,8 @@
 from Agent import Agent
 import random
 
+printStuff = False
+
 class MyAI ( Agent ):
 
 	def __init__ ( self ):
@@ -34,6 +36,7 @@ class MyAI ( Agent ):
 
 		self.hasGold = False
 		self.numofMoves = 0
+		self.moveLimit = 50
 
 		self.map = {}
 		self.moves = [Forward()]
@@ -54,12 +57,13 @@ class MyAI ( Agent ):
 			i = 0
 			while i < 5 and len(self.undo) > 0:
 				i += 1
-				del self.undo[-1]
-		self.printStatus()
+				del self.undo[0]
+		if printStuff:
+			self.printStatus()
 		if glitter:
 			return self.grab()
 		self.addToMap(stench, breeze)
-		if self.x == 0 and self.y == 0 and (self.hasGold or breeze or stench):
+		if self.x == 0 and self.y == 0 and (self.hasGold or breeze or stench or self.numofMoves > self.moveLimit):
 			return Agent.Action.CLIMB
 
 		if not self.backTrack and (stench or breeze or bump):
@@ -70,38 +74,30 @@ class MyAI ( Agent ):
 			self.backTrack = False
 			if not stench and not breeze and not bump:
 				if (self.mapX == -1 or self.x < self.mapX-1) and (self.x+1,self.y) not in self.map:
-					print("RIGHTTTTT")
 					self.setDirection(0)
 				elif self.y > 0 and (self.x,self.y-1) not in self.map:
-					print("DOOOWWNNNN")
 					self.setDirection(1)
 				elif self.x > 0 and (self.x-1,self.y) not in self.map:
-					print("LEEEFFFTTTT")
 					self.setDirection(2)
 				elif (self.mapY == -1 or self.y < self.mapY-1) and (self.x,self.y+1) not in self.map:
-					print("UUUUPPPPPP")
 					self.setDirection(3)
 			else:
 				self.backTrack = True
 
 
-		if (self.backTrack or self.hasGold or self.numofMoves > 100) and len(self.undo) > 0:
+		if (self.backTrack or self.hasGold or self.numofMoves > self.moveLimit) and len(self.undo) > 0:
 			return self.undo.pop(0).action(self)
 
 
 		if not self.backTrack and len(self.moves) == 0:
-			if (self.mapX == -1 or self.x < self.mapX-1) and (self.x+1,self.y) not in self.map:
-				print("RIGHTTTTT")
-				self.setDirection(0)
-			elif self.y > 0 and (self.x,self.y-1) not in self.map:
-				print("DOOOWWNNNN")
-				self.setDirection(1)
-			elif self.x > 0 and (self.x-1,self.y) not in self.map:
-				print("LEEEFFFTTTT")
-				self.setDirection(2)
-			elif (self.mapY == -1 or self.y < self.mapY-1) and (self.x,self.y+1) not in self.map:
-				print("UUUUPPPPPP")
-				self.setDirection(3)
+			# if (self.mapX == -1 or self.x < self.mapX-1) and (self.x+1,self.y) not in self.map:
+			# 	self.setDirection(0)
+			# elif self.y > 0 and (self.x,self.y-1) not in self.map:
+			# 	self.setDirection(1)
+			# elif self.x > 0 and (self.x-1,self.y) not in self.map:
+			# 	self.setDirection(2)
+			# elif (self.mapY == -1 or self.y < self.mapY-1) and (self.x,self.y+1) not in self.map:
+			# 	self.setDirection(3)
 			self.moves.append(Forward())
 
 		if len(self.moves) > 0:
@@ -125,7 +121,8 @@ class MyAI ( Agent ):
 	def grab(self):
 		self.moved = False
 		self.hasGold = True
-		print("GOLD===========================================================")
+		if printStuff:
+			print("GOLD===========================================================")
 		return Agent.Action.GRAB
 
 	def printStatus(self):
@@ -133,16 +130,15 @@ class MyAI ( Agent ):
 		print("MAP: " + str(self.map))
 		print("MOVES: " + str(self.moves))
 		print("UNDO: " + str(self.undo))
-		print("MAPX","MAPY", self.mapX, self.mapY)
+		print("MAPX","MAPY", self.mapX, self.mapY, "X,Y: ",self.x,self.y)
 
 
 class Forward:
 	def action(self, agent):
 		agent.x += agent.dx
 		agent.y += agent.dy
-		agent.moved = True
-		self.direction = agent.direction
-		print("FORWARD")
+		if printStuff:
+			print("FORWARD")
 		return Agent.Action.FORWARD
 
 	def undo(self, agent):
@@ -170,8 +166,8 @@ class TurnLeft:
 		else:
 			agent.dx = 1
 			agent.dy = 0
-		agent.moved = False
-		print("TURN_LEFT")
+		if printStuff:
+			print("TURN_LEFT")
 		return Agent.Action.TURN_LEFT
 
 	def undo(self, agent):
@@ -193,8 +189,8 @@ class TurnRight:
 		else:
 			agent.dx = -1
 			agent.dy = 0
-		agent.moved = False
-		print("TURN_RIGHT")
+		if printStuff:
+			print("TURN_RIGHT")
 		return Agent.Action.TURN_RIGHT
 
 	def undo(self, agent):
