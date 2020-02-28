@@ -33,6 +33,7 @@ class MyAI ( Agent ):
 		self.mapY = -1
 
 		self.hasGold = False
+		self.numofMoves = 0
 
 		self.map = {}
 		self.moves = [Forward()]
@@ -42,6 +43,7 @@ class MyAI ( Agent ):
 
 
 	def getAction( self, stench, breeze, glitter, bump, scream ):
+		self.numofMoves += 1
 		if bump:
 			if self.direction == 0:
 				self.mapX = self.x
@@ -49,11 +51,10 @@ class MyAI ( Agent ):
 				self.mapY = self.y
 			self.x -= self.dx
 			self.y -= self.dy
-			del self.undo[-1]
-			del self.undo[-1]
-			del self.undo[-1]
-			del self.undo[-1]
-			del self.undo[-1]
+			i = 0
+			while i < 5 and len(self.undo) > 0:
+				i += 1
+				del self.undo[-1]
 		self.printStatus()
 		if glitter:
 			return self.grab()
@@ -68,24 +69,39 @@ class MyAI ( Agent ):
 		if self.backTrack:
 			self.backTrack = False
 			if not stench and not breeze and not bump:
-				if (self.mapX != -1 or self.x < self.mapX) and (self.x+1,self.y) not in self.map:
+				if (self.mapX == -1 or self.x < self.mapX-1) and (self.x+1,self.y) not in self.map:
+					print("RIGHTTTTT")
 					self.setDirection(0)
 				elif self.y > 0 and (self.x,self.y-1) not in self.map:
+					print("DOOOWWNNNN")
 					self.setDirection(1)
 				elif self.x > 0 and (self.x-1,self.y) not in self.map:
+					print("LEEEFFFTTTT")
 					self.setDirection(2)
-				elif (self.mapY != -1 or self.y < self.mapY) and (self.x,self.y+1) not in self.map:
+				elif (self.mapY == -1 or self.y < self.mapY-1) and (self.x,self.y+1) not in self.map:
+					print("UUUUPPPPPP")
 					self.setDirection(3)
 			else:
 				self.backTrack = True
-			pass
 
 
-		if self.backTrack and len(self.undo) > 0:
+		if (self.backTrack or self.hasGold or self.numofMoves > 100) and len(self.undo) > 0:
 			return self.undo.pop(0).action(self)
 
 
 		if not self.backTrack and len(self.moves) == 0:
+			if (self.mapX == -1 or self.x < self.mapX-1) and (self.x+1,self.y) not in self.map:
+				print("RIGHTTTTT")
+				self.setDirection(0)
+			elif self.y > 0 and (self.x,self.y-1) not in self.map:
+				print("DOOOWWNNNN")
+				self.setDirection(1)
+			elif self.x > 0 and (self.x-1,self.y) not in self.map:
+				print("LEEEFFFTTTT")
+				self.setDirection(2)
+			elif (self.mapY == -1 or self.y < self.mapY-1) and (self.x,self.y+1) not in self.map:
+				print("UUUUPPPPPP")
+				self.setDirection(3)
 			self.moves.append(Forward())
 
 		if len(self.moves) > 0:
@@ -117,6 +133,7 @@ class MyAI ( Agent ):
 		print("MAP: " + str(self.map))
 		print("MOVES: " + str(self.moves))
 		print("UNDO: " + str(self.undo))
+		print("MAPX","MAPY", self.mapX, self.mapY)
 
 
 class Forward:
