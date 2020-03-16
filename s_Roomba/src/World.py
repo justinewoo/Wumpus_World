@@ -78,12 +78,12 @@ class World():
                         
             # Get the move
             self.__lastAction = self.__agent.getAction (
-														self.__board[self.__agentX][self.__agentY].stench,
-														self.__board[self.__agentX][self.__agentY].breeze,
-														self.__board[self.__agentX][self.__agentY].gold,
-														self.__bump,
-														self.__scream
-													   )
+                                                        self.__board[self.__agentX][self.__agentY].stench,
+                                                        self.__board[self.__agentX][self.__agentY].breeze,
+                                                        self.__board[self.__agentX][self.__agentY].gold,
+                                                        self.__bump,
+                                                        self.__scream
+                                                       )
 
             # Make the move
             self.__score -= 1;
@@ -345,3 +345,4 @@ class World():
     
     def __randomInt ( self, limit ):
         return random.randrange(limit)
+

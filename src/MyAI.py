@@ -3,7 +3,7 @@
 #
 # AUTHOR:      Abdullah Younis
 #
-# DESCRIPTION: This file contains your agent class, which you will
+# DESCRIPTION: This file contains your self class, which you will
 #              implement. You are responsible for implementing the
 #              'getAction' function and any helper methods you feel you
 #              need.
@@ -16,21 +16,28 @@
 #                the code. Any changes to other portions of the code will
 #                be lost when the tournament runs your code.
 # ======================================================================
+"""
+Better version
+Store ps instead of moves
+While frontier is not empty
+	Move to adjacent unexplored p
+	If stench or breeze:
+		Backtrack until no stench or breeze and an adjacent p is unexplored
+If bump, reset p and remove the attempted p from frontier
+If gold, backtrack all the way and climb
+"""
 
 from Agent import Agent
 import random
-
-printStuff = False
 
 
 class MyAI ( Agent ):
 
 	def __init__ ( self ):
-		self.x = 0
-		self.y = 0
+		self.p = (0,0)
 		self.dx = 1
 		self.dy = 0
-		self.direction = 0 # 0:1,0	1:0,-1	2:-1,0	3:0,1
+		self.d = 0 # 0:1,0	1:0,-1	2:-1,0	3:0,1
 
 		self.mapX = -1
 		self.mapY = -1
@@ -41,176 +48,221 @@ class MyAI ( Agent ):
 		self.numofMoves = 0
 		self.moveLimit = 1
 
-		self.map = {}
-		self.moves = []
+		self.stenches = set()
+		self.map = set()
+		self.frontier = set()
 		self.undo = []
+		self.tP = (1,0)
+		self.tD = 0
 
 		self.backTrack = False
+		self.wumpusAlive = True
+		self.wumpusPos = False
+		self.prepareToShoot = False
 
 
 	def getAction( self, stench, breeze, glitter, bump, scream ):
 		self.numofMoves += 1
-
-		if self.x > self.maxX:
-			self.maxX = self.x
-		if self.y > self.maxY:
-			self.maxY = self.y
-
-
-		if len(self.map)*5 > self.moveLimit:
-			self.moveLimit = len(self.map)*5
-
+		if self.p[0] > self.maxX:
+			self.maxX = self.p[0]
+		if self.p[1] > self.maxY:
+			self.maxY = self.p[1]
 
 		if bump:
-			if self.direction == 0:
-				self.mapX = self.x
-			if self.direction == 3:
-				self.mapY = self.y
-			self.x -= self.dx
-			self.y -= self.dy
+			if self.d == 0:
+				self.mapX = self.p[0]-1
+			if self.d == 3:
+				self.mapY = self.p[1]-1
+			self.p = (self.p[0]-self.dx,self.p[1]-self.dy)
+			self.tP = self.p
+			if not self.backTrack:
+				del self.undo[0]
 
-			del self.undo[0:min(5,len(self.undo))]
+		if stench:
+			self.stenches.add(self.p)
 
-		self.addToMap(stench, breeze)
-
-
-		if printStuff:
-			self.printStatus()
-
+		self.map.add(self.p)
+		if self.p in self.frontier:
+			self.frontier.remove(self.p)
+		if not (stench and self.wumpusAlive) and not breeze:
+			self.addToFrontier()
 
 		if glitter:
 			return self.grab()
 
-		if self.x == 0 and self.y == 0 and (self.hasGold or breeze or stench or self.numofMoves > self.moveLimit):
+		if self.p[0] == 0 and self.p[1] == 0 and (self.hasGold or breeze or (stench and self.wumpusAlive)):
 			return Agent.Action.CLIMB
 
-
-		if not self.backTrack and (stench or breeze or bump):
+		if stench and self.wumpusAlive:
+			if self.whereWumpus():
+				self.prepareToShoot = True
+			else:
+				self.backTrack = True
+		elif breeze or bump or self.hasGold:
 			self.backTrack = True
-			self.moves = []
 
-		if self.backTrack:
-			if not stench and not breeze and not bump:
-				self.backTrack = not self.checkForUnexplored()
+		if self.prepareToShoot:
+			if self.d == self.tD:
+				self.wumpusAlive = False
+				self.prepareToShoot = False
+				return Agent.Action.SHOOT
 
-		if (self.backTrack or self.hasGold or self.numofMoves > self.moveLimit) and len(self.undo) > 0:
-			return self.undo.pop(0).action(self)
+		elif self.backTrack:
+			if not self.hasGold and not (stench and self.wumpusAlive) and not breeze and self.checkAdjacent():
+				self.backTrack = False
+			elif not self.prepareToShoot and self.p == self.tP and self.d == self.tD:
+				if len(self.undo) > 0:
+					self.getUndoPosition()
+				else:
+					self.checkAdjacent()
+		else:
+			self.checkAdjacent()
 
-		if not self.backTrack and len(self.moves) == 0:
-			# self.checkForUnexplored()
-			self.moves.append(Forward())
 
-		if len(self.moves) > 0:
-			move = self.moves.pop(0)
-			move.undo(self)
-			return move.action(self)
-		
+		if not self.prepareToShoot and not (self.wumpusPos and self.wumpusAlive) and self.p == self.tP and len(self.undo) > 0:
+			self.backTrack = True
+			self.getUndoPosition()
 
-	def checkForUnexplored(self):
-		if (self.mapY == -1 or self.y < self.mapY-1) and (self.x,self.y+1) not in self.map:
-			self.setDirection(3)
+
+		if self.d != self.tD:
+			if abs(self.d - self.tD) == 2:
+				return self.turnLeft()
+			elif self.tD - self.d == -1 or (self.d == 0 and self.tD == 3):
+				return self.turnLeft()
+			elif self.tD - self.d == 1 or (self.d == 3 and self.tD == 0):
+				return self.turnRight()
+		elif self.p != self.tP and not self.prepareToShoot:
+			return self.forward()
+
+		return Agent.Action.CLIMB
+
+
+	def getUndoPosition(self):
+		self.tP = self.undo.pop(0)
+		if self.p[0] < self.tP[0]:
+			self.tD = 0
+		elif self.p[0] > self.tP[0]:
+			self.tD = 2
+		elif self.p[1] > self.tP[1]:
+			self.tD = 1
+		else:
+			self.tD = 3
+
+
+	def addToFrontier(self):
+		if self.p[0] > 0 and (self.p[0]-1,self.p[1]) not in self.map:
+			self.frontier.add((self.p[0]-1,self.p[1]))
+		elif self.p[1] > 0 and (self.p[0],self.p[1]-1) not in self.map:
+			self.frontier.add((self.p[0],self.p[1]-1))
+		elif (self.mapX == -1 or self.p[0] < self.mapX-1) and (self.p[0]+1,self.p[1]) not in self.map:
+			self.frontier.add((self.p[0]+1,self.p[1]))
+		elif (self.mapY == -1 or self.p[1] < self.mapY-1) and (self.p[0],self.p[1]+1) not in self.map:
+			self.frontier.add((self.p[0],self.p[1]+1))
+
+
+	def checkAdjacent(self):
+		if self.p[0] > 0 and (self.p[0]-1,self.p[1]) not in self.map:
+			self.tP = (self.p[0]-1,self.p[1])
+			self.tD = 2
 			return True
-		elif self.y > 0 and (self.x,self.y-1) not in self.map:
-			self.setDirection(1)
+
+		elif self.p[1] > 0 and (self.p[0],self.p[1]-1) not in self.map:
+			self.tP = (self.p[0],self.p[1]-1)
+			self.tD = 1
 			return True
-		elif (self.mapX == -1 or self.x < self.mapX-1) and (self.x+1,self.y) not in self.map:
-			self.setDirection(0)
+
+		elif (self.mapX == -1 or self.p[0] < self.mapX-1) and (self.p[0]+1,self.p[1]) not in self.map:
+			self.tP = (self.p[0]+1,self.p[1])
+			self.tD = 0
 			return True
-		elif self.x > 0 and (self.x-1,self.y) not in self.map:
-			self.setDirection(2)
+
+		elif (self.mapY == -1 or self.p[1] < self.mapY-1) and (self.p[0],self.p[1]+1) not in self.map:
+			self.tP = (self.p[0],self.p[1]+1)
+			self.tD = 3
 			return True
 		return False
 
 
-	def setDirection(self, direction):
-		if abs(self.direction - direction) == 2:
-			self.moves.append(TurnLeft())
-			self.moves.append(TurnLeft())
-		elif direction - self.direction == -1 or (self.direction == 0 and direction == 3):
-			self.moves.append(TurnLeft())
-		elif direction - self.direction == 1 or (self.direction == 3 and direction == 0):
-			self.moves.append(TurnRight())
-
-
-	def addToMap(self, stench, breeze):
-		self.map[(self.x,self.y)] = not stench and not breeze
-
-
 	def grab(self):
-		self.moved = False
 		self.hasGold = True
-		if printStuff:
-			print("GOLD===========================================================")
 		return Agent.Action.GRAB
 
 
-	def printStatus(self):
-		print("BACKTRACK: " + str(self.backTrack))
-		print("MAP: " + str(self.map))
-		print("MOVES: " + str(self.moves))
-		print("UNDO: " + str(self.undo))
-		print("MAPX","MAPY", self.mapX, self.mapY, "X,Y: ",self.x,self.y)
+	def whereWumpus(self):
+		if len(self.stenches) < 2:
+			return False
+
+		if (self.p[0] + 1, self.p[1] - 1) in self.stenches:
+			if (self.p[0], self.p[1]-1) in self.map:
+				self.tD = 0
+				return True
+			elif (self.p[0] + 1, self.p[1]) in self.map:
+				self.tD = 1
+				return True
+
+		elif (self.p[0] - 1, self.p[1] + 1) in self.stenches:
+			if (self.p[0], self.p[1]+1) in self.map:
+				self.tD = 2
+				return True
+			elif (self.p[0] - 1, self.p[1]) in self.map:
+				self.tD = 3
+				return True
+
+		elif (self.p[0] + 1, self.p[1] + 1) in self.stenches:
+			if (self.p[0], self.p[1]+1) in self.map:
+				self.tD = 0
+				return True
+			elif (self.p[0] + 1, self.p[1]) in self.map:
+				self.tD = 3
+				return True
+
+		elif (self.p[0] - 1, self.p[1] - 1) in self.stenches:
+			if (self.p[0], self.p[1] - 1) in self.map:
+				self.tD = 2
+				return True
+			elif (self.p[0] - 1, self.p[1]) in self.map:
+				self.tD = 1
+				return True
+		return False
 
 
-class Forward:
-	def action(self, agent):
-		agent.x += agent.dx
-		agent.y += agent.dy
-		if printStuff:
-			print("FORWARD")
+	def forward(self):
+		if not self.backTrack:
+			self.undo.insert(0,self.p)
+		self.p = (self.p[0]+self.dx,self.p[1]+self.dy)
 		return Agent.Action.FORWARD
 
-	def undo(self, agent):
-		agent.undo.insert(0,TurnRight())
-		agent.undo.insert(0,TurnRight())
-		agent.undo.insert(0,Forward())
-		agent.undo.insert(0,TurnLeft())
-		agent.undo.insert(0,TurnLeft())
 
-
-class TurnLeft:
-	def action(self, agent):
-		agent.direction -= 1
-		if agent.direction == -1:
-			agent.direction = 3
-		if agent.dx == 1:
-			agent.dx = 0
-			agent.dy = 1
-		elif agent.dy == 1:
-			agent.dx = -1
-			agent.dy = 0
-		elif agent.dx == -1:
-			agent.dx = 0
-			agent.dy = -1
+	def turnLeft(self):
+		self.d -= 1
+		if self.d == -1:
+			self.d = 3
+		if self.dx == 1:
+			self.dx = 0
+			self.dy = 1
+		elif self.dy == 1:
+			self.dx = -1
+			self.dy = 0
+		elif self.dx == -1:
+			self.dx = 0
+			self.dy = -1
 		else:
-			agent.dx = 1
-			agent.dy = 0
-		if printStuff:
-			print("TURN_LEFT")
+			self.dx = 1
+			self.dy = 0
 		return Agent.Action.TURN_LEFT
 
-	def undo(self, agent):
-		agent.undo.insert(0,TurnRight())
 
-
-class TurnRight:
-	def action(self, agent):
-		agent.direction = (agent.direction + 1)%4
-		if agent.dx == 1:
-			agent.dx = 0
-			agent.dy = -1
-		elif agent.dy == 1:
-			agent.dx = 1
-			agent.dy = 0
-		elif agent.dx == -1:
-			agent.dx = 0
-			agent.dy = 1
+	def turnRight(self):
+		self.d = (self.d + 1)%4
+		if self.dx == 1:
+			self.dx = 0
+			self.dy = -1
+		elif self.dy == 1:
+			self.dx = 1
+			self.dy = 0
+		elif self.dx == -1:
+			self.dx = 0
+			self.dy = 1
 		else:
-			agent.dx = -1
-			agent.dy = 0
-		if printStuff:
-			print("TURN_RIGHT")
-		return Agent.Action.TURN_RIGHT
-
-	def undo(self, agent):
-		agent.undo.insert(0,TurnLeft())
+			self.dx = -1
+			self.dy = 0
