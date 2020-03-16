@@ -345,4 +345,3 @@ class World():
     
     def __randomInt ( self, limit ):
         return random.randrange(limit)
-
